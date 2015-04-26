@@ -10,28 +10,33 @@
  * of Sonatype, Inc. Apache Maven is a trademark of the Apache Software Foundation. M2eclipse is a trademark of the
  * Eclipse Foundation. All other trademarks are the property of their respective owners.
  */
-package org.sonatype.nexus.yum.internal.createrepo
+package org.sonatype.nexus.yum.internal.rest;
+
+import org.sonatype.nexus.yum.YumRepository;
+
+import org.restlet.data.MediaType;
+import org.restlet.resource.FileRepresentation;
 
 /**
- * Creates a yum repository (similar to createrepo).
- * @since 3.0
+ * @since yum 3.0
  */
-class CreateYumRepository
-extends YumRepositoryWriter
+public class YumFileRepresentation
+    extends FileRepresentation
 {
 
-  CreateYumRepository(final File repoDir, final Integer timestamp = null, final File groupFile = null) {
-    super(repoDir, timestamp, groupFile)
+  public YumFileRepresentation(UrlPathInterpretation interpretation, YumRepository yumRepository) {
+    super(yumRepository.resolvePath(interpretation.getPath()), getMediaType(interpretation.getPath()));
   }
 
-  /**
-   * Write a yum package metadata.
-   */
-  void write(final YumPackage yumPackage) {
-    maybeStart()
-    writePrimary(yumPackage)
-    writeFileLists(yumPackage)
-    writeOther(yumPackage)
+  private static MediaType getMediaType(String path) {
+    if (path.endsWith("xml")) {
+      return MediaType.APPLICATION_XML;
+    }
+    else if (path.endsWith("gz")) {
+      return MediaType.APPLICATION_GNU_ZIP;
+    }
+    else {
+      return MediaType.APPLICATION_ALL;
+    }
   }
-
 }

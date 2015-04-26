@@ -10,35 +10,18 @@
  * of Sonatype, Inc. Apache Maven is a trademark of the Apache Software Foundation. M2eclipse is a trademark of the
  * Eclipse Foundation. All other trademarks are the property of their respective owners.
  */
-package org.sonatype.nexus.yum.internal.createrepo;
+package org.sonatype.nexus.yum.internal;
+
+import java.io.File;
 
 /**
- * Yum package metadata store.
- *
- * @since 3.0
+ * @since yum 3.0
  */
-public interface YumStore
+public interface ListFileFactory
 {
 
-  /**
-   * Add/update metadata.
-   */
-  void put(YumPackage yumPackage);
+  File getRpmListFile();
 
-  /**
-   * Get all existing metadata.
-   */
-  Iterable<YumPackage> get();
+  File getRpmListFile(String version);
 
-  /**
-   * Delete all metadata for packages under specified location.
-   * Will delete all metadata for packages location starting with specified location, to easy remove all metadata from
-   * a directory location.
-   */
-  void delete(String location);
-
-  /**
-   * Deletes all metadata.
-   */
-  void deleteAll();
 }

@@ -14,8 +14,7 @@ package org.sonatype.nexus.yum;
 
 import java.util.Map;
 
-import org.sonatype.nexus.scheduling.TaskInfo;
-import org.sonatype.nexus.yum.internal.createrepo.YumStore;
+import org.sonatype.scheduling.ScheduledTask;
 
 /**
  * Provides access to Yum functionality around a Nexus hosted repository.
@@ -98,7 +97,7 @@ public interface YumHosted
    */
   String getVersion(String alias);
 
-  TaskInfo regenerate();
+  ScheduledTask<YumRepository> regenerate();
 
   /**
    * Adds RPM and regenerate.
@@ -106,7 +105,7 @@ public interface YumHosted
    * @param path to be added
    * @return regenerate future (never null)
    */
-  TaskInfo addRpmAndRegenerate(String path);
+  ScheduledTask<YumRepository> addRpmAndRegenerate(String path);
 
   YumRepository getYumRepository(String version)
       throws Exception;
@@ -116,7 +115,5 @@ public interface YumHosted
   void regenerateWhenDirectoryIsRemoved(String path);
 
   void markDirty(String version);
-
-  YumStore getYumStore();
 
 }

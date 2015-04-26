@@ -16,15 +16,15 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.Map;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import org.sonatype.nexus.common.io.DirSupport;
 import org.sonatype.nexus.proxy.ItemNotFoundException;
 import org.sonatype.nexus.proxy.ResourceStoreRequest;
 import org.sonatype.nexus.proxy.access.Action;
@@ -33,87 +33,94 @@ import org.sonatype.nexus.proxy.item.StorageFileItem;
 import org.sonatype.nexus.proxy.item.StorageItem;
 import org.sonatype.nexus.proxy.repository.GroupRepository;
 import org.sonatype.nexus.proxy.repository.Repository;
-import org.sonatype.nexus.proxy.repository.RepositoryTaskSupport;
-import org.sonatype.nexus.scheduling.Cancelable;
-import org.sonatype.nexus.scheduling.CancelableSupport;
-import org.sonatype.nexus.scheduling.TaskConfiguration;
-import org.sonatype.nexus.scheduling.TaskInfo;
-import org.sonatype.nexus.scheduling.TaskScheduler;
-import org.sonatype.nexus.yum.Yum;
+import org.sonatype.nexus.scheduling.AbstractNexusTask;
+import org.sonatype.nexus.scheduling.NexusScheduler;
 import org.sonatype.nexus.yum.YumRegistry;
 import org.sonatype.nexus.yum.YumRepository;
+import org.sonatype.nexus.yum.internal.MetadataProcessor;
 import org.sonatype.nexus.yum.internal.RepoMD;
 import org.sonatype.nexus.yum.internal.RepositoryUtils;
 import org.sonatype.nexus.yum.internal.YumRepositoryImpl;
-import org.sonatype.nexus.yum.internal.createrepo.CreateYumRepository;
-import org.sonatype.nexus.yum.internal.createrepo.MergeYumRepository;
-import org.sonatype.nexus.yum.internal.createrepo.YumPackage;
-import org.sonatype.nexus.yum.internal.createrepo.YumStore;
+import org.sonatype.scheduling.ScheduledTask;
+import org.sonatype.sisu.goodies.eventbus.EventBus;
 
-import com.google.common.collect.Sets;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
+import static org.apache.commons.io.FileUtils.copyDirectory;
 import static org.apache.commons.io.FileUtils.deleteQuietly;
 import static org.sonatype.nexus.yum.Yum.PATH_OF_REPODATA;
 import static org.sonatype.nexus.yum.Yum.PATH_OF_REPOMD_XML;
+import static org.sonatype.scheduling.TaskState.RUNNING;
 
 /**
  * @since yum 3.0
  */
-@Named
+@Named(MergeMetadataTask.ID)
 public class MergeMetadataTask
-    extends RepositoryTaskSupport
-    implements Cancelable
+    extends AbstractNexusTask<YumRepository>
 {
-  // TODO: is defined in DefaultFSPeer. Do we want to expose it over there?
-  private static final String REPO_TMP_FOLDER = ".nexus/tmp";
 
-  private final YumRegistry yumRegistry;
+  private static final Logger log = LoggerFactory.getLogger(MergeMetadataTask.class);
+
+  public static final String ID = "MergeMetadataTask";
 
   private GroupRepository groupRepository;
 
+  private final YumRegistry yumRegistry;
+
+  private final CommandLineExecutor commandLineExecutor;
+
   @Inject
-  public MergeMetadataTask(final YumRegistry yumRegistry) {
+  public MergeMetadataTask(final EventBus eventBus,
+                           final YumRegistry yumRegistry,
+                           final CommandLineExecutor commandLineExecutor)
+  {
+    super(eventBus, null);
     this.yumRegistry = checkNotNull(yumRegistry);
+    this.commandLineExecutor = checkNotNull(commandLineExecutor);
+  }
+
+  public void setGroupRepository(final GroupRepository groupRepository) {
+    this.groupRepository = groupRepository;
   }
 
   @Override
-  protected YumRepository execute()
+  protected YumRepository doRun()
       throws Exception
   {
-    groupRepository = getRepositoryRegistry()
-        .getRepositoryWithFacet(getConfiguration().getRepositoryId(), GroupRepository.class);
     if (isValidRepository()) {
       deleteYumTempDirs();
 
       final File repoBaseDir = RepositoryUtils.getBaseDir(groupRepository);
-      final File repoRepodataDir = new File(repoBaseDir, PATH_OF_REPODATA);
-      final File repoTmpDir = new File(repoBaseDir, REPO_TMP_FOLDER + File.separator + UUID.randomUUID().toString());
-      DirSupport.mkdir(repoTmpDir);
-      final File repoTmpRepodataDir = new File(repoTmpDir, PATH_OF_REPODATA);
-      DirSupport.mkdir(repoTmpRepodataDir);
-
       RepositoryItemUid groupRepoMdUid = groupRepository.createUid("/" + PATH_OF_REPOMD_XML);
       try {
         groupRepoMdUid.getLock().lock(Action.update);
 
-        List<File> memberBaseDirs = getBaseDirsOfMemberRepositories();
-        try (MergeYumRepository mergeRepo = new MergeYumRepository(repoTmpRepodataDir)) {
-          for (File memberBaseDir : memberBaseDirs) {
-            mergeRepo.merge(memberBaseDir);
+        final List<File> memberReposBaseDirs = getBaseDirsOfMemberRepositories();
+        if (memberReposBaseDirs.size() > 1) {
+          log.debug("Merging repository group '{}' out of {}", groupRepository.getId(), memberReposBaseDirs);
+          commandLineExecutor.exec(buildCommand(repoBaseDir, memberReposBaseDirs));
+          MetadataProcessor.processMergedMetadata(groupRepository, memberReposBaseDirs);
+          log.debug("Group repository '{}' merged", groupRepository.getId());
+        }
+        else {
+          // delete without using group repository API as group repositories does not allow delete (read only)
+          File groupRepodata = new File(repoBaseDir, PATH_OF_REPODATA);
+          deleteQuietly(groupRepodata);
+          if (memberReposBaseDirs.size() == 1) {
+            log.debug(
+                "Copying Yum metadata from {} to group repository {}",
+                memberReposBaseDirs.get(0), groupRepository.getId()
+            );
+            copyDirectory(new File(memberReposBaseDirs.get(0), PATH_OF_REPODATA), groupRepodata);
           }
         }
-
-        // at the end check for cancellation
-        CancelableSupport.checkCancellation();
-        // got here, not canceled, move results to proper place
-        DirSupport.deleteIfExists(repoRepodataDir.toPath());
-        DirSupport.moveIfExists(repoTmpRepodataDir.toPath(), repoRepodataDir.toPath());
       }
       finally {
         groupRepoMdUid.getLock().unlock();
-        deleteQuietly(repoTmpDir);
       }
 
       deleteYumTempDirs();
@@ -179,20 +186,65 @@ public class MergeMetadataTask
   }
 
   @Override
-  public String getMessage() {
-    return format("Merging Yum metadata in repository '%s'", getConfiguration().getRepositoryId());
+  public boolean allowConcurrentExecution(Map<String, List<ScheduledTask<?>>> activeTasks) {
+
+    if (activeTasks.containsKey(ID)) {
+      for (ScheduledTask<?> scheduledTask : activeTasks.get(ID)) {
+        if (RUNNING.equals(scheduledTask.getTaskState())) {
+          if (conflictsWith((MergeMetadataTask) scheduledTask.getTask())) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
+  }
+
+  private boolean conflictsWith(MergeMetadataTask task) {
+    return task.getGroupRepository() != null && this.getGroupRepository() != null
+        && task.getGroupRepository().getId().equals(getGroupRepository().getId());
+  }
+
+  @Override
+  protected String getAction() {
+    return "MERGE_YUM_METADATA";
+  }
+
+  @Override
+  protected String getMessage() {
+    return format("Merging Yum metadata in repository '%s'", groupRepository.getId());
+  }
+
+  public GroupRepository getGroupRepository() {
+    return groupRepository;
   }
 
   private boolean isValidRepository() {
     return groupRepository != null && !groupRepository.getMemberRepositories().isEmpty();
   }
 
-  public static TaskInfo createTaskFor(final TaskScheduler nexusScheduler,
-                                                      final GroupRepository groupRepository)
+  private String buildCommand(File repoBaseDir, List<File> memberRepoBaseDirs)
+      throws MalformedURLException, URISyntaxException
   {
-    TaskConfiguration task = nexusScheduler.createTaskConfigurationInstance(MergeMetadataTask.class);
-    task.setRepositoryId(groupRepository.getId());
-    return nexusScheduler.submit(task);
+    final StringBuilder repos = new StringBuilder();
+    for (File memberRepoBaseDir : memberRepoBaseDirs) {
+      repos.append(" --repo=");
+      repos.append(memberRepoBaseDir.toURI().toASCIIString());
+    }
+    return format(
+        "%s --no-database %s -o %s",
+        yumRegistry.getMergerepoPath(), repos.toString(), repoBaseDir.getAbsolutePath()
+    );
+  }
+
+  public static ScheduledTask<YumRepository> createTaskFor(final NexusScheduler nexusScheduler,
+                                                           final GroupRepository groupRepository)
+  {
+    final MergeMetadataTask task = nexusScheduler.createTaskInstance(
+        MergeMetadataTask.class
+    );
+    task.setGroupRepository(groupRepository);
+    return nexusScheduler.submit(MergeMetadataTask.ID, task);
   }
 
 }

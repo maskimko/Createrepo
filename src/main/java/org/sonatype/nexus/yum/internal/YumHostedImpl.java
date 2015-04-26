@@ -16,26 +16,23 @@ import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 import javax.annotation.Nullable;
+import javax.inject.Inject;
+import javax.inject.Named;
 
 import org.sonatype.nexus.proxy.ResourceStoreRequest;
 import org.sonatype.nexus.proxy.repository.HostedRepository;
 import org.sonatype.nexus.proxy.repository.Repository;
-import org.sonatype.nexus.scheduling.TaskConfiguration;
-import org.sonatype.nexus.scheduling.TaskInfo;
-import org.sonatype.nexus.scheduling.TaskScheduler;
+import org.sonatype.nexus.scheduling.NexusScheduler;
 import org.sonatype.nexus.yum.YumHosted;
 import org.sonatype.nexus.yum.YumRepository;
-import org.sonatype.nexus.yum.internal.createrepo.YumStore;
-import org.sonatype.nexus.yum.internal.createrepo.YumStoreFactory;
 import org.sonatype.nexus.yum.internal.task.GenerateMetadataTask;
-import org.sonatype.nexus.yum.internal.task.GenerateMetadataTaskDescriptor;
+import org.sonatype.nexus.yum.internal.task.TaskAlreadyScheduledException;
+import org.sonatype.scheduling.ScheduledTask;
 
 import com.google.common.collect.Maps;
 import com.google.inject.assistedinject.Assisted;
@@ -47,10 +44,12 @@ import static java.io.File.pathSeparator;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.apache.commons.lang.StringUtils.isBlank;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
+import static org.sonatype.nexus.yum.internal.task.GenerateMetadataTask.ID;
 
 /**
  * @since yum 3.0
  */
+@Named
 public class YumHostedImpl
     implements YumHosted
 {
@@ -59,9 +58,7 @@ public class YumHostedImpl
 
   private static final int MAX_EXECUTION_COUNT = 100;
 
-  private final TaskScheduler nexusScheduler;
-
-  private final GenerateMetadataTaskDescriptor generateMetadataTaskDescriptor;
+  private final NexusScheduler nexusScheduler;
 
   private final ScheduledThreadPoolExecutor executor;
 
@@ -69,13 +66,13 @@ public class YumHostedImpl
 
   private final File temporaryDirectory;
 
-  private final YumStore yumStore;
-
   private boolean processDeletes;
 
   private long deleteProcessingDelay;
 
   private String yumGroupsDefinitionFile;
+
+  private final File baseDir;
 
   private final Map<String, String> aliases;
 
@@ -85,18 +82,16 @@ public class YumHostedImpl
   private final Map<DelayedDirectoryDeletionTask, ScheduledFuture<?>> reverseTaskMap =
       new HashMap<DelayedDirectoryDeletionTask, ScheduledFuture<?>>();
 
-  public YumHostedImpl(final TaskScheduler nexusScheduler,
-                       final GenerateMetadataTaskDescriptor generateMetadataTaskDescriptor,
+  @Inject
+  public YumHostedImpl(final NexusScheduler nexusScheduler,
                        final ScheduledThreadPoolExecutor executor,
                        final BlockSqliteDatabasesRequestStrategy blockSqliteDatabasesRequestStrategy,
-                       final YumStoreFactory yumStoreFactory,
                        final @Assisted HostedRepository repository,
                        final @Assisted File temporaryDirectory)
       throws MalformedURLException, URISyntaxException
 
   {
     this.nexusScheduler = checkNotNull(nexusScheduler);
-    this.generateMetadataTaskDescriptor = checkNotNull(generateMetadataTaskDescriptor);
     this.executor = checkNotNull(executor);
     this.repository = checkNotNull(repository);
     this.temporaryDirectory = checkNotNull(temporaryDirectory);
@@ -106,9 +101,9 @@ public class YumHostedImpl
 
     this.aliases = Maps.newHashMap();
 
-    this.yumGroupsDefinitionFile = null;
+    this.baseDir = RepositoryUtils.getBaseDir(repository);
 
-    this.yumStore = checkNotNull(yumStoreFactory).create(repository.getId());
+    this.yumGroupsDefinitionFile = null;
 
     repository.registerRequestStrategy(
         BlockSqliteDatabasesRequestStrategy.class.getName(), checkNotNull(blockSqliteDatabasesRequestStrategy)
@@ -151,6 +146,11 @@ public class YumHostedImpl
   }
 
   @Override
+  public File getBaseDir() {
+    return baseDir;
+  }
+
+  @Override
   public YumHosted addAlias(final String alias, final String version) {
     aliases.put(alias, version);
     return this;
@@ -185,13 +185,8 @@ public class YumHostedImpl
     return getYumRepository(null);
   }
 
-  @Override
-  public YumStore getYumStore() {
-    return yumStore;
-  }
-
-  TaskInfo createYumRepository(final String version,
-                                              final File yumRepoBaseDir)
+  ScheduledTask<YumRepository> createYumRepository(final String version,
+                                                   final File yumRepoBaseDir)
   {
     try {
       File rpmBaseDir = RepositoryUtils.getBaseDir(repository);
@@ -201,7 +196,7 @@ public class YumHostedImpl
       task.setRepositoryId(repository.getId());
       task.setVersion(version);
       task.setYumGroupsDefinitionFile(getYumGroupsDefinitionFile());
-      return submitTask(task.taskConfiguration());
+      return submitTask(task);
     }
     catch (Exception e) {
       throw new RuntimeException("Unable to create repository", e);
@@ -214,31 +209,26 @@ public class YumHostedImpl
   {
     YumRepositoryImpl yumRepository = cache.lookup(repository.getId(), version);
     if ((yumRepository == null) || yumRepository.isDirty()) {
-      final TaskInfo taskInfo = createYumRepository(
+      final ScheduledTask<YumRepository> future = createYumRepository(
           version, createRepositoryTempDir(repository, version)
       );
-      yumRepository = (YumRepositoryImpl) taskInfo.getCurrentState().getFuture().get();
+      yumRepository = (YumRepositoryImpl) future.get();
       cache.cache(yumRepository);
     }
     return yumRepository;
   }
 
-  private TaskInfo submitTask(final TaskConfiguration task) {
-    final List<TaskInfo> taskInfos = generateMetadataTaskDescriptor.filter(nexusScheduler.listsTasks());
-    // type + repoId + version wil conflict
-    for (TaskInfo taskInfo : taskInfos) {
-      if (Objects.equals(taskInfo.getConfiguration().getRepositoryId(), task.getRepositoryId()) &&
-          Objects.equals(taskInfo.getConfiguration().getString(GenerateMetadataTask.PARAM_VERSION), task.getString(
-              GenerateMetadataTask.PARAM_VERSION))) {
-        final TaskConfiguration taskConfiguration = mergeAddedFiles(taskInfo.getConfiguration(), task);
-        return nexusScheduler.scheduleTask(taskConfiguration, taskInfo.getSchedule());
-      }
+  private ScheduledTask<YumRepository> submitTask(GenerateMetadataTask task) {
+    try {
+      return nexusScheduler.submit(ID, task);
     }
-    return nexusScheduler.submit(task);
+    catch (TaskAlreadyScheduledException e) {
+      return mergeAddedFiles(e.getOriginal(), task);
+    }
   }
 
   @Override
-  public TaskInfo regenerate() {
+  public ScheduledTask<YumRepository> regenerate() {
     return addRpmAndRegenerate(null);
   }
 
@@ -248,7 +238,7 @@ public class YumHostedImpl
   }
 
   @Override
-  public TaskInfo addRpmAndRegenerate(@Nullable String filePath) {
+  public ScheduledTask<YumRepository> addRpmAndRegenerate(@Nullable String filePath) {
     try {
       LOG.debug("Processing added rpm {}:{}", repository.getId(), filePath);
       final File rpmBaseDir = RepositoryUtils.getBaseDir(repository);
@@ -257,23 +247,7 @@ public class YumHostedImpl
       task.setRepositoryId(repository.getId());
       task.setAddedFiles(filePath);
       task.setYumGroupsDefinitionFile(getYumGroupsDefinitionFile());
-      return submitTask(task.taskConfiguration());
-    }
-    catch (Exception e) {
-      throw new RuntimeException("Unable to create repository", e);
-    }
-  }
-
-  public TaskInfo removeRpmAndRegenerate(@Nullable String filePath) {
-    try {
-      LOG.debug("Processing deleted rpm {}:{}", repository.getId(), filePath);
-      final File rpmBaseDir = RepositoryUtils.getBaseDir(repository);
-      final GenerateMetadataTask task = createTask();
-      task.setRpmDir(rpmBaseDir.getAbsolutePath());
-      task.setRepositoryId(repository.getId());
-      task.setRemovedFile(filePath);
-      task.setYumGroupsDefinitionFile(getYumGroupsDefinitionFile());
-      return submitTask(task.taskConfiguration());
+      return submitTask(task);
     }
     catch (Exception e) {
       throw new RuntimeException("Unable to create repository", e);
@@ -281,27 +255,24 @@ public class YumHostedImpl
   }
 
   @SuppressWarnings("unchecked")
-  private TaskConfiguration mergeAddedFiles(final TaskConfiguration existingTaskConfiguration,
-                                            final TaskConfiguration taskToMerge)
+  private ScheduledTask<YumRepository> mergeAddedFiles(ScheduledTask<?> existingScheduledTask,
+                                                       GenerateMetadataTask taskToMerge)
   {
-    if (isNotBlank(taskToMerge.getString(GenerateMetadataTask.PARAM_ADDED_FILES))) {
-      if (isBlank(existingTaskConfiguration.getString(GenerateMetadataTask.PARAM_ADDED_FILES))) {
-        existingTaskConfiguration.setString(GenerateMetadataTask.PARAM_ADDED_FILES,
-            taskToMerge.getString(GenerateMetadataTask.PARAM_ADDED_FILES));
+    if (isNotBlank(taskToMerge.getAddedFiles())) {
+      final GenerateMetadataTask existingTask = (GenerateMetadataTask) existingScheduledTask.getTask();
+      if (isBlank(existingTask.getAddedFiles())) {
+        existingTask.setAddedFiles(taskToMerge.getAddedFiles());
       }
       else {
-        existingTaskConfiguration.setString(GenerateMetadataTask.PARAM_ADDED_FILES,
-            existingTaskConfiguration.getString(GenerateMetadataTask.PARAM_ADDED_FILES) + pathSeparator +
-                taskToMerge.getString(GenerateMetadataTask.PARAM_ADDED_FILES));
+        existingTask.setAddedFiles(
+            existingTask.getAddedFiles() + pathSeparator + taskToMerge.getAddedFiles());
       }
     }
-    return existingTaskConfiguration;
+    return (ScheduledTask<YumRepository>) existingScheduledTask;
   }
 
   private GenerateMetadataTask createTask() {
-    final TaskConfiguration taskCfg = nexusScheduler
-        .createTaskConfigurationInstance(generateMetadataTaskDescriptor.getId());
-    final GenerateMetadataTask task = nexusScheduler.createTaskInstance(taskCfg);
+    final GenerateMetadataTask task = nexusScheduler.createTaskInstance(GenerateMetadataTask.class);
     if (task == null) {
       throw new IllegalStateException(
           "Could not create a task fo type " + GenerateMetadataTask.class.getName()
@@ -317,8 +288,9 @@ public class YumHostedImpl
   @Override
   public void regenerateWhenPathIsRemoved(String path) {
     if (shouldProcessDeletes()) {
+      LOG.debug("Processing deleted rpm {}:{}", repository.getId(), path);
       if (findDelayedParentDirectory(path) == null) {
-        removeRpmAndRegenerate(path);
+        regenerate();
       }
     }
   }
@@ -326,6 +298,7 @@ public class YumHostedImpl
   @Override
   public void regenerateWhenDirectoryIsRemoved(String path) {
     if (shouldProcessDeletes()) {
+      LOG.debug("Processing deleted dir {}:{}", repository.getId(), path);
       if (findDelayedParentDirectory(path) == null) {
         schedule(new DelayedDirectoryDeletionTask(path));
       }
@@ -381,7 +354,7 @@ public class YumHostedImpl
         LOG.debug(
             "Recreate yum repository {} because of removed path {}", getNexusRepository().getId(), path
         );
-        removeRpmAndRegenerate(path);
+        regenerate();
       }
       else if (executionCount < MAX_EXECUTION_COUNT) {
         LOG.debug(

@@ -10,19 +10,21 @@
  * of Sonatype, Inc. Apache Maven is a trademark of the Apache Software Foundation. M2eclipse is a trademark of the
  * Eclipse Foundation. All other trademarks are the property of their respective owners.
  */
-package org.sonatype.nexus.yum.internal.createrepo;
+package org.sonatype.nexus.yum.internal.capabilities;
+
+import java.util.Map;
 
 /**
- * {@link YumStore} factory.
+ * Configuration adapter for {@link MergeMetadataCapability}.
  *
- * @since 3.0
+ * @since yum 3.0
  */
-public interface YumStoreFactory
+public class MergeMetadataCapabilityConfiguration
+    extends MetadataCapabilityConfigurationSupport
 {
 
-  /**
-   * Create a yum store for specified repository.
-   */
-  YumStore create(String repositoryId);
+  public MergeMetadataCapabilityConfiguration(final Map<String, String> properties) {
+    super(properties);
+  }
 
 }

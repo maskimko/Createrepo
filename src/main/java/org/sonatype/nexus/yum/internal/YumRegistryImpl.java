@@ -20,7 +20,7 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-import org.sonatype.nexus.configuration.application.ApplicationDirectories;
+import org.sonatype.nexus.configuration.application.NexusConfiguration;
 import org.sonatype.nexus.proxy.ResourceStoreRequest;
 import org.sonatype.nexus.proxy.item.DefaultStorageFileItem;
 import org.sonatype.nexus.proxy.item.StringContentLocator;
@@ -28,9 +28,11 @@ import org.sonatype.nexus.proxy.maven.MavenRepository;
 import org.sonatype.nexus.proxy.repository.GroupRepository;
 import org.sonatype.nexus.proxy.repository.HostedRepository;
 import org.sonatype.nexus.proxy.repository.ProxyRepository;
+import org.sonatype.nexus.scheduling.NexusScheduler;
 import org.sonatype.nexus.yum.Yum;
 import org.sonatype.nexus.yum.YumRegistry;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +41,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * @since yum 3.0
  */
-
+@Named
+@Singleton
 public class YumRegistryImpl
     implements YumRegistry
 {
@@ -48,16 +51,25 @@ public class YumRegistryImpl
 
   private final Map<String, Yum> yums = new ConcurrentHashMap<String, Yum>();
 
-  private ApplicationDirectories applicationDirectories;
+  private final NexusConfiguration nexusConfiguration;
+
+  private final NexusScheduler nexusScheduler;
 
   private final YumFactory yumFactory;
 
   private int maxNumberOfParallelThreads;
 
-  public YumRegistryImpl(final ApplicationDirectories applicationDirectories,
+  private String createrepoPath;
+
+  private String mergerepoPath;
+
+  @Inject
+  public YumRegistryImpl(final NexusConfiguration nexusConfiguration,
+                         final NexusScheduler nexusScheduler,
                          final YumFactory yumFactory)
   {
-    this.applicationDirectories = checkNotNull(applicationDirectories);
+    this.nexusConfiguration = checkNotNull(nexusConfiguration);
+    this.nexusScheduler = checkNotNull(nexusScheduler);
     this.yumFactory = checkNotNull(yumFactory);
     this.maxNumberOfParallelThreads = DEFAULT_MAX_NUMBER_PARALLEL_THREADS;
   }
@@ -124,9 +136,41 @@ public class YumRegistryImpl
     return maxNumberOfParallelThreads;
   }
 
+  /**
+   * @since 2.11
+   */
+  @Override
+  public String getCreaterepoPath() {
+    return StringUtils.isBlank(createrepoPath) ? DEFAULT_CREATEREPO_PATH : createrepoPath;
+  }
+
+  /**
+   * @since 2.11
+   */
+  @Override
+  public void setCreaterepoPath(final String path) {
+    this.createrepoPath = path;
+  }
+
+  /**
+   * @since 2.11
+   */
+  @Override
+  public String getMergerepoPath() {
+    return StringUtils.isBlank(mergerepoPath) ? DEFAULT_MERGEREPO_PATH : mergerepoPath;
+  }
+
+  /**
+   * @since 2.11
+   */
+  @Override
+  public void setMergerepoPath(final String path) {
+    this.mergerepoPath = path;
+  }
+
   @Override
   public File getTemporaryDirectory() {
-    return new File(applicationDirectories.getTemporaryDirectory(), "nexus-yum-repository-plugin");
+    return new File(nexusConfiguration.getTemporaryDirectory(), "nexus-yum-repository-plugin");
   }
 
   private void createVirtualYumConfigFile(final MavenRepository repository) {

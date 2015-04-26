@@ -12,16 +12,18 @@
  */
 package org.sonatype.nexus.yum.internal;
 
+import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
-import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import javax.inject.Inject;
+import javax.inject.Named;
 
 import org.sonatype.nexus.proxy.repository.GroupRepository;
 import org.sonatype.nexus.proxy.repository.Repository;
-import org.sonatype.nexus.scheduling.TaskScheduler;
+import org.sonatype.nexus.scheduling.NexusScheduler;
 import org.sonatype.nexus.yum.YumGroup;
 import org.sonatype.nexus.yum.YumRepository;
 import org.sonatype.nexus.yum.internal.task.MergeMetadataTask;
@@ -35,21 +37,25 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * @since 2.7
  */
+@Named
 public class YumGroupImpl
     implements YumGroup
 {
 
   private final static Logger log = LoggerFactory.getLogger(YumGroupImpl.class);
 
-  private final TaskScheduler nexusScheduler;
+  private final NexusScheduler nexusScheduler;
 
   private final GroupRepository repository;
+
+  private final File baseDir;
 
   private final ReadWriteLock lock;
 
   private YumRepository yumRepository;
 
-  public YumGroupImpl(final TaskScheduler nexusScheduler,
+  @Inject
+  public YumGroupImpl(final NexusScheduler nexusScheduler,
                       final MergeMetadataRequestStrategy mergeMetadataRequestStrategy,
                       final @Assisted GroupRepository repository)
       throws MalformedURLException, URISyntaxException
@@ -57,9 +63,15 @@ public class YumGroupImpl
   {
     this.nexusScheduler = checkNotNull(nexusScheduler);
     this.repository = checkNotNull(repository);
+    this.baseDir = RepositoryUtils.getBaseDir(repository);
     this.lock = new ReentrantReadWriteLock();
 
     repository.registerRequestStrategy(MergeMetadataRequestStrategy.class.getName(), mergeMetadataRequestStrategy);
+  }
+
+  @Override
+  public File getBaseDir() {
+    return baseDir;
   }
 
   @Override
@@ -76,11 +88,7 @@ public class YumGroupImpl
         lock.writeLock().lock();
         try {
           if (yumRepository == null) {
-            final Future future = MergeMetadataTask.createTaskFor(nexusScheduler, repository)
-                .getCurrentState().getFuture();
-            if (future != null) {
-              yumRepository = (YumRepository) future.get();
-            }
+            yumRepository = MergeMetadataTask.createTaskFor(nexusScheduler, repository).get();
           }
         }
         finally {

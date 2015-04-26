@@ -27,7 +27,7 @@ import org.sonatype.nexus.proxy.item.ContentGenerator;
 import org.sonatype.nexus.proxy.item.ContentLocator;
 import org.sonatype.nexus.proxy.item.StorageFileItem;
 import org.sonatype.nexus.proxy.repository.Repository;
-import org.sonatype.nexus.proxy.repository.RepositoryURLBuilder;
+import org.sonatype.nexus.rest.RepositoryURLBuilder;
 
 /**
  * @since yum 3.0
@@ -71,7 +71,7 @@ public class YumConfigContentGenerator
           try (PrintWriter out = new PrintWriter(baos)) {
             out.println("[" + repository.getId() + "]");
             out.println("name=" + repository.getName());
-            out.println("baseurl=" + repositoryURLBuilder.getExposedRepositoryContentUrl(repository));
+            out.println("baseurl=" + repositoryURLBuilder.getExposedRepositoryContentUrl(repository, true));
             out.println("enabled=1");
             out.println("protect=0");
             out.println("gpgcheck=0");

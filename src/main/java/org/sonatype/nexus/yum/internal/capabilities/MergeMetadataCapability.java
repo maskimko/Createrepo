@@ -10,36 +10,34 @@
  * of Sonatype, Inc. Apache Maven is a trademark of the Apache Software Foundation. M2eclipse is a trademark of the
  * Eclipse Foundation. All other trademarks are the property of their respective owners.
  */
-package org.sonatype.nexus.yum;
+package org.sonatype.nexus.yum.internal.capabilities;
 
-import java.io.File;
+import java.util.Map;
 
-import org.sonatype.nexus.proxy.repository.Repository;
+import javax.inject.Inject;
+import javax.inject.Named;
+
+import org.sonatype.nexus.proxy.registry.RepositoryRegistry;
+import org.sonatype.nexus.yum.YumRegistry;
 
 /**
- * Provides access to Yum functionality around a Nexus repository.
- *
  * @since yum 3.0
  */
-public interface Yum
+@Named(MergeMetadataCapabilityDescriptor.TYPE_ID)
+public class MergeMetadataCapability
+    extends MetadataCapabilitySupport<MergeMetadataCapabilityConfiguration>
 {
 
-  static final long DEFAULT_DELETE_PROCESSING_DELAY = 10;
+  @Inject
+  public MergeMetadataCapability(final YumRegistry service,
+                                 final RepositoryRegistry repositoryRegistry)
+  {
+    super(service, repositoryRegistry);
+  }
 
-  String PATH_OF_REPODATA = "repodata";
-
-  String NAME_OF_REPOMD_XML = "repomd.xml";
-
-  String PATH_OF_REPOMD_XML = PATH_OF_REPODATA + "/" + NAME_OF_REPOMD_XML;
-
-  /**
-   * @return associated Nexus repository (never null)
-   */
-  Repository getNexusRepository();
-
-  YumRepository getYumRepository()
-      throws Exception;
-
-  File getBaseDir();
+  @Override
+  protected MergeMetadataCapabilityConfiguration createConfig(final Map<String, String> properties) {
+    return new MergeMetadataCapabilityConfiguration(properties);
+  }
 
 }
