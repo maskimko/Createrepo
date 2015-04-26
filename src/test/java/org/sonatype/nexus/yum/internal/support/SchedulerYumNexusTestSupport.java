@@ -10,33 +10,33 @@
  * of Sonatype, Inc. Apache Maven is a trademark of the Apache Software Foundation. M2eclipse is a trademark of the
  * Eclipse Foundation. All other trademarks are the property of their respective owners.
  */
-package org.sonatype.nexus.yum.internal.capabilities;
+package org.sonatype.nexus.yum.internal.support;
 
-import javax.inject.Named;
-import javax.inject.Singleton;
+import javax.inject.Inject;
 
-import org.sonatype.nexus.capability.CapabilityRegistry;
-import org.sonatype.nexus.capability.support.CapabilityBooterSupport;
-import org.sonatype.nexus.yum.YumRegistry;
+import org.sonatype.nexus.scheduling.TaskScheduler;
 
-/**
- * Automatically create Yum capability.
- *
- * @since yum 3.0
- */
-@Named
-@Singleton
-public class YumCapabilitiesBooter
-    extends CapabilityBooterSupport
+import com.google.code.tempusfugit.temporal.Condition;
+import org.junit.After;
+
+public abstract class SchedulerYumNexusTestSupport
+    extends YumNexusTestSupport
 {
-  @Override
-  protected void boot(final CapabilityRegistry registry) throws Exception {
-    maybeAddCapability(
-        registry,
-        YumCapabilityDescriptor.TYPE,
-        true, // enabled
-        null, // no notes
-        new YumCapabilityConfiguration(YumRegistry.DEFAULT_MAX_NUMBER_PARALLEL_THREADS).asMap()
-    );
+
+  @Inject
+  private TaskScheduler nexusScheduler;
+
+  @After
+  public void waitForThreadPool()
+      throws Exception
+  {
+    waitFor(new Condition()
+    {
+      @Override
+      public boolean isSatisfied() {
+        return 0 == nexusScheduler.getRunningTaskCount();
+      }
+    });
   }
+
 }
