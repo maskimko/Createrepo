@@ -23,8 +23,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 import javax.annotation.Nullable;
-import javax.inject.Inject;
-import javax.inject.Named;
 
 import org.sonatype.nexus.proxy.ResourceStoreRequest;
 import org.sonatype.nexus.proxy.repository.HostedRepository;
@@ -53,7 +51,6 @@ import static org.apache.commons.lang.StringUtils.isNotBlank;
 /**
  * @since yum 3.0
  */
-@Named
 public class YumHostedImpl
     implements YumHosted
 {
@@ -88,7 +85,6 @@ public class YumHostedImpl
   private final Map<DelayedDirectoryDeletionTask, ScheduledFuture<?>> reverseTaskMap =
       new HashMap<DelayedDirectoryDeletionTask, ScheduledFuture<?>>();
 
-  @Inject
   public YumHostedImpl(final TaskScheduler nexusScheduler,
                        final GenerateMetadataTaskDescriptor generateMetadataTaskDescriptor,
                        final ScheduledThreadPoolExecutor executor,

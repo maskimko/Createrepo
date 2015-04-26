@@ -18,8 +18,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import javax.inject.Inject;
-import javax.inject.Named;
 
 import org.sonatype.nexus.proxy.repository.GroupRepository;
 import org.sonatype.nexus.proxy.repository.Repository;
@@ -37,7 +35,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * @since 2.7
  */
-@Named
 public class YumGroupImpl
     implements YumGroup
 {
@@ -52,7 +49,6 @@ public class YumGroupImpl
 
   private YumRepository yumRepository;
 
-  @Inject
   public YumGroupImpl(final TaskScheduler nexusScheduler,
                       final MergeMetadataRequestStrategy mergeMetadataRequestStrategy,
                       final @Assisted GroupRepository repository)

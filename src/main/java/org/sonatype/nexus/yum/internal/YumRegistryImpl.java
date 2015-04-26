@@ -20,7 +20,7 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
-import org.sonatype.nexus.configuration.ApplicationDirectories;
+import org.sonatype.nexus.configuration.application.ApplicationDirectories;
 import org.sonatype.nexus.proxy.ResourceStoreRequest;
 import org.sonatype.nexus.proxy.item.DefaultStorageFileItem;
 import org.sonatype.nexus.proxy.item.StringContentLocator;
@@ -39,8 +39,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * @since yum 3.0
  */
-@Named
-@Singleton
+
 public class YumRegistryImpl
     implements YumRegistry
 {
@@ -55,7 +54,6 @@ public class YumRegistryImpl
 
   private int maxNumberOfParallelThreads;
 
-  @Inject
   public YumRegistryImpl(final ApplicationDirectories applicationDirectories,
                          final YumFactory yumFactory)
   {
