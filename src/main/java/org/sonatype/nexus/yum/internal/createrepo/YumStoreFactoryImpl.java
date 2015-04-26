@@ -14,44 +14,25 @@ package org.sonatype.nexus.yum.internal.createrepo;
 
 import java.util.List;
 
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Provider;
-import javax.inject.Singleton;
 
 import org.sonatype.nexus.events.EventSubscriber;
-import org.sonatype.nexus.orient.DatabaseInstance;
-import org.sonatype.nexus.proxy.events.NexusInitializedEvent;
-import org.sonatype.nexus.proxy.events.NexusStoppingEvent;
 import org.sonatype.sisu.goodies.lifecycle.LifecycleSupport;
 
-import com.google.common.collect.Lists;
-import com.google.common.eventbus.Subscribe;
-import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-
-import static com.google.common.base.Preconditions.checkNotNull;
+import java.util.ArrayList;
 
 /**
  * Orient DB {@link YumStoreFactory} implementation.
  *
  * @since 3.0
  */
-@Named
-@Singleton
 public class YumStoreFactoryImpl
     extends LifecycleSupport
     implements YumStoreFactory, EventSubscriber
 {
 
-  private final Provider<DatabaseInstance> databaseInstance;
 
-  private final YumPackageEntityAdapter entityAdapter;
 
-  @Inject
-  public YumStoreFactoryImpl(final @Named("yum") Provider<DatabaseInstance> databaseInstance) {
-    this.databaseInstance = checkNotNull(databaseInstance);
-    this.entityAdapter = new YumPackageEntityAdapter();
+  public YumStoreFactoryImpl() {
   }
 
   @Override
@@ -59,21 +40,11 @@ public class YumStoreFactoryImpl
     return new YumStoreImpl(repositoryId);
   }
 
-  @Subscribe
-  public void on(final NexusInitializedEvent event) throws Exception {
-    start();
-  }
-
-  @Subscribe
-  public void on(final NexusStoppingEvent event) throws Exception {
-    stop();
-  }
+ 
 
   @Override
   protected void doStart() throws Exception {
-    try (ODatabaseDocumentTx db = databaseInstance.get().connect()) {
-      entityAdapter.register(db);
-    }
+      //Log it
   }
 
   private class YumStoreImpl
@@ -81,6 +52,7 @@ public class YumStoreFactoryImpl
   {
 
     private String repositoryId;
+    List<YumPackage> pkgList = new ArrayList<>();
 
     private YumStoreImpl(final String repositoryId) {
       this.repositoryId = repositoryId;
@@ -88,49 +60,31 @@ public class YumStoreFactoryImpl
 
     @Override
     public void put(final YumPackage yumPackage) {
-      try (ODatabaseDocumentTx db = openDb()) {
-        ODocument existing = entityAdapter.get(db, repositoryId, yumPackage.getLocation());
-        if (existing == null) {
-          entityAdapter.create(db, repositoryId, yumPackage);
-        }
-        else {
-          entityAdapter.write(db, existing, repositoryId, yumPackage);
-        }
-      }
+      pkgList.add(yumPackage);
     }
 
     @Override
     public Iterable<YumPackage> get() {
-      try (ODatabaseDocumentTx db = openDb()) {
-        // NOTE: this will read all packages fact that can lead to high memory consumption, depending on the number of
-        // packages in repository. To avoid this, we could get onl the RIDs from db and then use guava
-        // Iterables.transform which will read the package from db on iterable next()
-        List<YumPackage> packages = Lists.newArrayList();
-        for (ODocument document : entityAdapter.get(db, repositoryId)) {
-          packages.add(entityAdapter.read(document));
-        }
-        return packages;
-      }
+     
+        return pkgList;
     }
 
     @Override
     public void delete(final String location) {
-      try (ODatabaseDocumentTx db = openDb()) {
-        entityAdapter.delete(db, repositoryId, location);
+        for (int i = 0; i< pkgList.size(); i++){
+          if (pkgList.get(i).getLocation().equals(location)) {
+              pkgList.remove(i);
+          }
       }
     }
 
     @Override
     public void deleteAll() {
-      try (ODatabaseDocumentTx db = openDb()) {
-        entityAdapter.delete(db, repositoryId);
+      for (int i = pkgList.size()-1; i >=0; i--) {
+          pkgList.remove(i);
       }
     }
 
-    private ODatabaseDocumentTx openDb() {
-      ensureStarted();
-      return databaseInstance.get().acquire();
-    }
   }
 
 }
