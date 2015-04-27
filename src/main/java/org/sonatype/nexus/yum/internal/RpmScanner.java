@@ -15,9 +15,6 @@ package org.sonatype.nexus.yum.internal;
 import java.io.File;
 import java.util.Set;
 
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Singleton;
 
 import org.sonatype.sisu.resource.scanner.Scanner;
 import org.sonatype.sisu.resource.scanner.helper.ListenerSupport;
@@ -31,15 +28,12 @@ import static java.io.File.separator;
 /**
  * @since yum 3.0
  */
-@Named
-@Singleton
 public class RpmScanner
 {
 
   private final Scanner scanner;
 
-  @Inject
-  public RpmScanner(final @Named("serial") Scanner scanner) {
+  public RpmScanner(final Scanner scanner) {
     this.scanner = checkNotNull(scanner);
   }
 

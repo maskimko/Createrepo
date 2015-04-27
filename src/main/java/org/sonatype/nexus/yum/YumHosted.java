@@ -14,7 +14,6 @@ package org.sonatype.nexus.yum;
 
 import java.util.Map;
 
-import org.sonatype.nexus.scheduling.TaskInfo;
 import org.sonatype.nexus.yum.internal.createrepo.YumStore;
 
 /**
@@ -23,100 +22,102 @@ import org.sonatype.nexus.yum.internal.createrepo.YumStore;
  * @since 2.7
  */
 public interface YumHosted
-    extends Yum
-{
+        extends Yum {
 
-  static final long DEFAULT_DELETE_PROCESSING_DELAY = 10;
+    static final long DEFAULT_DELETE_PROCESSING_DELAY = 10;
 
-  /**
-   * Configures if deletes from a Nexus repository should result in Yum metadata regeneration.
-   *
-   * @param processDeletes true if metadata should be regenerated
-   * @return itself
-   */
-  YumHosted setProcessDeletes(boolean processDeletes);
+    /**
+     * Configures if deletes from a Nexus repository should result in Yum
+     * metadata regeneration.
+     *
+     * @param processDeletes true if metadata should be regenerated
+     * @return itself
+     */
+    YumHosted setProcessDeletes(boolean processDeletes);
 
-  /**
-   * Configures the delay between a delete and Yum metadata regeneration.
-   *
-   * @param numberOfSeconds delay in seconds
-   * @return itself
-   */
-  YumHosted setDeleteProcessingDelay(final long numberOfSeconds);
+    /**
+     * Configures the delay between a delete and Yum metadata regeneration.
+     *
+     * @param numberOfSeconds delay in seconds
+     * @return itself
+     */
+    YumHosted setDeleteProcessingDelay(final long numberOfSeconds);
 
-  /**
-   * Configures repository path of a file containing Yum groups definition.
-   *
-   * @param yumGroupsDefinitionFile repository path of a file containing Yum groups definition
-   * @return itself
-   */
-  YumHosted setYumGroupsDefinitionFile(final String yumGroupsDefinitionFile);
+    /**
+     * Configures repository path of a file containing Yum groups definition.
+     *
+     * @param yumGroupsDefinitionFile repository path of a file containing Yum
+     * groups definition
+     * @return itself
+     */
+    YumHosted setYumGroupsDefinitionFile(final String yumGroupsDefinitionFile);
 
-  /**
-   * @return true if metadata is regenerated after a delete from a Nexus repository
-   */
-  boolean shouldProcessDeletes();
+    /**
+     * @return true if metadata is regenerated after a delete from a Nexus
+     * repository
+     */
+    boolean shouldProcessDeletes();
 
-  /**
-   * @return number of seconds between a delete from a Nexus repository and metadata regeneration
-   */
-  long deleteProcessingDelay();
+    /**
+     * @return number of seconds between a delete from a Nexus repository and
+     * metadata regeneration
+     */
+    long deleteProcessingDelay();
 
-  /**
-   * @return repository path of a file containing Yum groups definition
-   */
-  String getYumGroupsDefinitionFile();
+    /**
+     * @return repository path of a file containing Yum groups definition
+     */
+    String getYumGroupsDefinitionFile();
 
-  /**
-   * Configures an alias for a version.
-   *
-   * @param alias   alias name (cannot be null)
-   * @param version to be aliased (cannot be null)
-   * @return itself
-   */
-  YumHosted addAlias(String alias, String version);
+    /**
+     * Configures an alias for a version.
+     *
+     * @param alias alias name (cannot be null)
+     * @param version to be aliased (cannot be null)
+     * @return itself
+     */
+    YumHosted addAlias(String alias, String version);
 
-  /**
-   * Removes an alias.
-   *
-   * @param alias alias name (cannot be null)
-   * @return itself
-   */
-  YumHosted removeAlias(String alias);
+    /**
+     * Removes an alias.
+     *
+     * @param alias alias name (cannot be null)
+     * @return itself
+     */
+    YumHosted removeAlias(String alias);
 
-  /**
-   * Resets aliases to provided mappings.
-   *
-   * @param aliases alias mappings (cannot be null)
-   * @return itself
-   */
-  YumHosted setAliases(Map<String, String> aliases);
+    /**
+     * Resets aliases to provided mappings.
+     *
+     * @param aliases alias mappings (cannot be null)
+     * @return itself
+     */
+    YumHosted setAliases(Map<String, String> aliases);
 
-  /**
-   * @param alias alias name
-   * @return version mapped to provided alias, null if no mapping found
-   */
-  String getVersion(String alias);
+    /**
+     * @param alias alias name
+     * @return version mapped to provided alias, null if no mapping found
+     */
+    String getVersion(String alias);
 
-  TaskInfo regenerate();
+    void regenerate();
 
-  /**
-   * Adds RPM and regenerate.
-   *
-   * @param path to be added
-   * @return regenerate future (never null)
-   */
-  TaskInfo addRpmAndRegenerate(String path);
+    /**
+     * Adds RPM and regenerate.
+     *
+     * @param path to be added
+     */
+    void addRpmAndRegenerate(String path);
 
-  YumRepository getYumRepository(String version)
-      throws Exception;
+    YumRepository getYumRepository(String version)
+            throws Exception;
 
-  void regenerateWhenPathIsRemoved(String path);
+    void regenerateWhenPathIsRemoved(String path);
 
-  void regenerateWhenDirectoryIsRemoved(String path);
+    void regenerateWhenDirectoryIsRemoved(String path);
 
-  void markDirty(String version);
+    void markDirty(String version);
 
-  YumStore getYumStore();
+    YumStore getYumStore();
 
 }
