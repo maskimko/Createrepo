@@ -23,39 +23,21 @@
     <artifactId>createrepo</artifactId>
     <name>Createrepo</name>
     <packaging>jar</packaging>
-    <version>0.0-SNAPSHOT</version>
+    <version>0.1</version>
     <description>Java Createrepo implementation. This code was originally forked from Sonatype Nexus OSS GIT repository https://github.com/sonatype/nexus-oss</description>
 
     <properties>
-        <pluginDescription>Allows Nexus to create yum repositories for uploaded RPM packages.</pluginDescription>
-        <pluginDescription>Allows Nexus to create yum repositories for uploaded RPM packages.</pluginDescription>
-
-        <!--
-        Define nexus versions.  The 'nexus.version' property always refers to the version of the current project.
-        These values must always be constants; 'nexus.version' will get update automatically by set-version.
-        -->
         <nexus.version>2.11.2-06</nexus.version>
-
-        <!-- FIXME: WTF is this for, part of the http proxy changes, used in subst in test files :-( -->
         <nexus.configuration.version>2.8.0</nexus.configuration.version>
-
-        <!--
-        Configuration of 'nexus-plugin' packaging and bundles.
-        -->
         <nexus-plugin-bundle.version>1.2</nexus-plugin-bundle.version>
         <nexus-plugin.type>nexus-plugin</nexus-plugin.type>
-
-        <!-- logging configuration used in logback config files to control test logging -->
         <test.log.level>INFO</test.log.level>
         <test.log.pattern>%date %level [%thread%X{DC}] %logger - %msg%n</test.log.pattern>
         <it.test.log.level>INFO</it.test.log.level>
         <it.nexus.log.level>INFO</it.nexus.log.level>
-
-        <!-- nexus integration-testing bundle configuration -->
         <it.nexus.bundle.groupId>org.sonatype.nexus.assemblies</it.nexus.bundle.groupId>
         <it.nexus.bundle.artifactId>nexus-bundle-template</it.nexus.bundle.artifactId>
         <it.nexus.bundle.version>${nexus.version}</it.nexus.bundle.version>
-
     </properties>
 
     
@@ -69,7 +51,8 @@
         <dependency>
             <groupId>ua.pp.msk.yum</groupId>
             <artifactId>CreaterepoUtils</artifactId>
-            <version>0.2</version>
+            <version>0.3</version>
+            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>org.sonatype.sisu.goodies</groupId>

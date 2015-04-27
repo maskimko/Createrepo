@@ -17,11 +17,11 @@ import org.sonatype.nexus.yum.internal.createrepo.YumStore;
 import static org.sonatype.nexus.yum.Yum.PATH_OF_REPODATA;
 import org.sonatype.nexus.yum.YumRegistry;
 import org.sonatype.nexus.yum.internal.RpmScanner;
-import ua.pp.msk.yum.createrepoutils.CreateYumRepository;
 import ua.pp.msk.yum.createrepoutils.YumPackage;
 import ua.pp.msk.yum.createrepoutils.YumPackageParser;
 import org.sonatype.nexus.yum.internal.createrepo.YumStoreFactory;
 import org.sonatype.nexus.yum.internal.createrepo.YumStoreFactoryImpl;
+import ua.pp.msk.yum.createrepoutils.CreateYumRepository;
 
 /**
  *
@@ -37,8 +37,7 @@ public class CreateRepo {
     private static final String REPO_TMP_FOLDER = "/tmp/createrepo";
 
     private static final Logger LOG = LoggerFactory.getLogger(CreateRepo.class);
-    
-   
+
     public static void main(String[] args) {
         CreateRepo cr = new CreateRepo();
 
@@ -101,11 +100,12 @@ public class CreateRepo {
         YumStoreFactory ysf = new YumStoreFactoryImpl();
         YumStore yumStore = ysf.create("test");
         syncYumPackages(yumStore);
-        try (CreateYumRepository createRepo = new CreateYumRepository(repoTmpRepodataDir, null, null)) {
-            for (YumPackage yumPackage : yumStore.get()) {
+        CreateYumRepository createRepo = null;
 
-                createRepo.write(yumPackage);
-            }
+        createRepo = new CreateYumRepository(repoTmpRepodataDir, null, null);
+        for (YumPackage yumPackage : yumStore.get()) {
+
+            createRepo.write(yumPackage);
         }
 
         DirSupport.deleteIfExists(repoRepodataDir.toPath());

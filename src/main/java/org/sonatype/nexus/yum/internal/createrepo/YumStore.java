@@ -12,7 +12,7 @@
  */
 package org.sonatype.nexus.yum.internal.createrepo;
 
-
+import ua.pp.msk.yum.createrepoutils.YumPackage;
 
 
 /**

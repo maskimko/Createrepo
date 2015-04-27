@@ -17,7 +17,7 @@ import java.util.List;
 
 import org.sonatype.nexus.events.EventSubscriber;
 import org.sonatype.sisu.goodies.lifecycle.LifecycleSupport;
-
+import ua.pp.msk.yum.createrepoutils.YumPackage;
 import java.util.ArrayList;
 
 /**
