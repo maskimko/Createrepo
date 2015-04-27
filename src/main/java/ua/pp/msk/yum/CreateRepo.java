@@ -36,20 +36,33 @@ public class CreateRepo {
     private RpmScanner scanner;
     private static final String REPO_TMP_FOLDER = "/tmp/createrepo";
 
-    private static final Logger LOG = LoggerFactory.getLogger(CreateRepo.class);
+//    private static final Logger LOG = LoggerFactory.getLogger(CreateRepo.class);
 
-    public static void main(String[] args) {
-        CreateRepo cr = new CreateRepo();
-
+    public CreateRepo(String repositoryId, File rpmDir, File repoBaseDir, RpmScanner scanner) {
+        this.repositoryId = repositoryId;
+        this.rpmDir = rpmDir;
+        this.repoBaseDir = repoBaseDir;
+        this.scanner = scanner;
     }
 
-    private void create() {
-        if (repositoryId == null) {
-            LOG.error("Metadata regeneration can only be run when repository id is set");
-            System.exit(1);
-        }
-
+    
+    
+    
+    public void setRepositoryId(String repositoryId) {
+        this.repositoryId = repositoryId;
     }
+
+    public void setRpmDir(File rpmDir) {
+        this.rpmDir = rpmDir;
+    }
+
+    public void setRepoBaseDir(File repoBaseDir) {
+        this.repoBaseDir = repoBaseDir;
+    }
+
+  
+
+
 
     private String getRpmDir() {
         return rpmDir.getAbsolutePath();
@@ -80,7 +93,7 @@ public class CreateRepo {
                     );
                     yumStore.put(yumPackage);
                 } catch (FileNotFoundException e) {
-                    LOG.warn("Could not parse yum metadata for {}", location, e);
+//                    LOG.warn("Could not parse yum metadata for {}", location, e);
                 }
             }
         }
@@ -89,7 +102,8 @@ public class CreateRepo {
     protected void execute()
             throws Exception {
 
-        LOG.debug("Generating Yum-Repository for '{}' ...", getRpmDir());
+       
+//        LOG.debug("Generating Yum-Repository for '{}' ...", getRpmDir());
 
         final File repoRepodataDir = new File(repoBaseDir, PATH_OF_REPODATA);
         final File repoTmpDir = new File(repoBaseDir, REPO_TMP_FOLDER + File.separator + UUID.randomUUID().toString());

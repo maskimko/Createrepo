@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (c) 2010 Osmosix, Inc., all rights reserved. -->
+<!DOCTYPE log4j:configuration PUBLIC "-//APACHE//DTD LOG4J 1.2//EN" "log4j.dtd">
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
+
+    <!-- Appenders -->
+    <appender name="console" class="org.apache.log4j.ConsoleAppender">
+        <param name="Target" value="System.out" />
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d{ISO8601} %-5p %-15c{2} [%t] %x - %m%n" />
+        </layout>
+    </appender>
+
+    <!-- Rolling log file -->
+    <appender name="ROLLING" class="org.apache.log4j.RollingFileAppender">
+        <!--<param name="File" value="/usr/local/osmosix/agent/logs/osmosix.log" />-->		<!--<param name="File" value="/usr/local/osmosix/agent/logs/osmosix.log" />-->
+        <param name="File" value="/opt/dtv/CliQr/status/log/status.log" />
+        <param name="Append" value="true" />
+        <param name="MaxFileSize" value="2MB" />
+        <param name="MaxBackupIndex" value="9" />
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d{ISO8601} %-5p %-15c{2} [%t] %x - %m%n" />
+        </layout>
+    </appender>
+        
+    <appender name="SYSLOG" class="org.apache.log4j.net.SyslogAppender"> 
+        <param name="Facility" value="LOCAL4"/>
+        <param name="FacilityPrinting" value="false"/>
+        <param name="Header" value="true"/>
+        <param name="SyslogHost" value="localhost"/>
+        <param name="ConversionPattern" value="%d{ISO8601} %-5p [%t] %c{2} %x - %m%n"/>
+    </appender>
+
+    <!-- Application Loggers -->
+    <logger name="com.osmosix">
+        <level value="debug" />
+    </logger>
+    <logger name="com.intropro">
+        <level value="debug"/>
+    </logger>
+
+    <!-- Root Logger -->
+    <root>
+        <priority value="debug" />
+        <appender-ref ref="console" /> 
+<!--        <appender-ref ref="ROLLING" />-->
+    </root>
+
+</log4j:configuration>
