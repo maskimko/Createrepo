@@ -10,8 +10,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.Set;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.sonatype.nexus.common.io.DirSupport;
 import org.sonatype.nexus.yum.internal.createrepo.YumStore;
 import static org.sonatype.nexus.yum.Yum.PATH_OF_REPODATA;
