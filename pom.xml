@@ -23,7 +23,7 @@
     <artifactId>createrepo</artifactId>
     <name>Createrepo</name>
     <packaging>jar</packaging>
-    <version>0.2</version>
+    <version>0.3</version>
     <description>Java Createrepo implementation. This code was originally forked from Sonatype Nexus OSS GIT repository https://github.com/sonatype/nexus-oss</description>
 
     <properties>

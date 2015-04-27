@@ -15,43 +15,52 @@ import java.nio.file.StandardCopyOption;
  * @author maskimko
  */
 public class DirSupport {
-    
+
     public static void mkdir(File dir) {
-        if (dir.isFile()) {
-            System.err.println("Removingn file, and creating directory instead");
-            boolean delete = dir.delete();
-            if (delete) {
-                boolean mkdir = dir.mkdir();
-                if (mkdir) {
-                    System.out.println("Directory " + dir.getAbsolutePath() + " has been successfuly created");
+        if (dir.exists()) {
+            if (dir.isFile()) {
+                System.err.println("Removingn file, and creating directory instead");
+                boolean delete = dir.delete();
+                if (delete) {
+                    boolean mkdir = dir.mkdirs();
+                    if (mkdir) {
+                        System.out.println("Directory " + dir.getAbsolutePath() + " has been successfuly created");
+                    }
+                } else {
+                    System.err.println("Cannot delete file " + dir.getAbsolutePath());
                 }
             } else {
-                System.err.println("Cannot delete file " + dir.getAbsolutePath());
+                System.out.println("Directory " + dir.getAbsolutePath() + "already exists");
+            }
+        } else {
+            boolean mkdir = dir.mkdirs();
+            if (mkdir) {
+                System.out.println("Directory " + dir.getAbsolutePath() + " has been successfuly created");
             }
         }
     }
-    
+
     public static void deleteIfExists(File file) throws IOException {
-        if (file.isDirectory()) {            
+        if (file.isDirectory()) {
             deleteDir(file);
         } else {
             Files.deleteIfExists(file.toPath());
         }
     }
-    
+
     public static void moveIfExists(File source, File destination) throws IOException {
         if (source.exists()) {
-            Files.move(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+            Files.move(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
     }
-    
+
     private static void deleteDir(File file) throws IOException {
         if (!file.isDirectory()) {
             System.err.println("This method supposed to delete directories only");
         } else {
-            
+
             File[] listFiles = file.listFiles();
-            
+
             for (File f : listFiles) {
                 deleteIfExists(f);
             }
