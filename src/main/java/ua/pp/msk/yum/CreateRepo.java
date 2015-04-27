@@ -73,7 +73,6 @@ public class CreateRepo {
         File rpmDir = new File(getRpmDir());
         if (true) {
             files = scanner.scan(rpmDir);
-            yumStore.deleteAll();
         }
 
         //TODO improve speed

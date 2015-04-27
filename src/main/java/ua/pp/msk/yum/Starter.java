@@ -48,7 +48,7 @@ public class Starter {
                 //TODO implement filefilter
                 String[] fileList = dir.list();
                for (String fileName : fileList) {
-                   File currentFile = new File(fileName);
+                   File currentFile = new File(dir.getAbsolutePath() + File.separator + fileName);
                    if (currentFile.exists()) {
                        arg1.onFile(currentFile);
                    }
