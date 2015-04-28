@@ -15,8 +15,6 @@ package org.sonatype.nexus.yum.internal.createrepo;
 import java.util.List;
 
 
-import org.sonatype.nexus.events.EventSubscriber;
-import org.sonatype.sisu.goodies.lifecycle.LifecycleSupport;
 import ua.pp.msk.yum.createrepoutils.YumPackage;
 import java.util.ArrayList;
 
@@ -26,8 +24,7 @@ import java.util.ArrayList;
  * @since 3.0
  */
 public class YumStoreFactoryImpl
-    extends LifecycleSupport
-    implements YumStoreFactory, EventSubscriber
+    implements YumStoreFactory
 {
 
 
@@ -42,10 +39,7 @@ public class YumStoreFactoryImpl
 
  
 
-  @Override
-  protected void doStart() throws Exception {
-      //Log it
-  }
+
 
   private class YumStoreImpl
       implements YumStore

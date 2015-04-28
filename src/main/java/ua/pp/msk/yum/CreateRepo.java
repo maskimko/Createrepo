@@ -12,7 +12,6 @@ import java.io.FileNotFoundException;
 import java.util.Set;
 import java.util.UUID;
 import org.sonatype.nexus.yum.internal.createrepo.YumStore;
-import static org.sonatype.nexus.yum.Yum.PATH_OF_REPODATA;
 import org.sonatype.nexus.yum.internal.RpmScanner;
 import ua.pp.msk.yum.createrepoutils.YumPackage;
 import ua.pp.msk.yum.createrepoutils.YumPackageParser;
@@ -27,23 +26,20 @@ import ua.pp.msk.yum.helper.DirSupport;
  */
 public class CreateRepo {
 
-    private String repositoryId;
+    private static final String PATH_OF_REPODATA = "repodata";
     private File rpmDir;
     private File repoBaseDir;
     private RpmScanner scanner;
     private static final String REPO_TMP_FOLDER = "tmpRepodata";
 
 //    private static final Logger LOG = LoggerFactory.getLogger(CreateRepo.class);
-    public CreateRepo(String repositoryId, File rpmDir, File repoBaseDir, RpmScanner scanner) {
-        this.repositoryId = repositoryId;
+    public CreateRepo(File rpmDir, File repoBaseDir, RpmScanner scanner) {
         this.rpmDir = rpmDir;
         this.repoBaseDir = repoBaseDir;
         this.scanner = scanner;
     }
 
-    public void setRepositoryId(String repositoryId) {
-        this.repositoryId = repositoryId;
-    }
+ 
 
     public void setRpmDir(File rpmDir) {
         this.rpmDir = rpmDir;

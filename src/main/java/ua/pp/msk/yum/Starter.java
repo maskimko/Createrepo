@@ -58,7 +58,7 @@ public class Starter {
         };
         RpmScanner scanner = new RpmScanner(s);
         
-        CreateRepo cr = new CreateRepo("test", new File("/tmp/testrepo"), new File("/tmp/testrepo"), scanner);
+        CreateRepo cr = new CreateRepo( new File("/tmp/testrepo"), new File("/tmp/testrepo"), scanner);
 //        LOG.debug("Executing repo creation");
         cr.execute();
     }
