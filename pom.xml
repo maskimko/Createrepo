@@ -23,7 +23,7 @@
     <artifactId>createrepo</artifactId>
     <name>Createrepo</name>
     <packaging>jar</packaging>
-    <version>0.4</version>
+    <version>0.5</version>
     <description>Java Createrepo implementation. This code was originally forked from Sonatype Nexus OSS GIT repository https://github.com/sonatype/nexus-oss</description>
 
     <properties>
@@ -46,7 +46,7 @@
         <dependency>
             <groupId>ua.pp.msk.yum</groupId>
             <artifactId>CreaterepoUtils</artifactId>
-            <version>0.6</version>
+            <version>0.7</version>
             <type>jar</type>
         </dependency>
         <dependency>
@@ -54,6 +54,11 @@
             <artifactId>sisu-resource-scanner</artifactId>
             <version>1.1.1</version>
             <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>1.7.10</version>
         </dependency>
     </dependencies>
     <repositories>

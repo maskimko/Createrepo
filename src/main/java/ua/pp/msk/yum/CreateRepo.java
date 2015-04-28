@@ -9,8 +9,11 @@ import com.google.common.io.Files;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.util.Calendar;
+import java.util.Formatter;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.LoggerFactory;
 import org.sonatype.nexus.yum.internal.createrepo.YumStore;
 import org.sonatype.nexus.yum.internal.RpmScanner;
 import ua.pp.msk.yum.createrepoutils.YumPackage;
@@ -75,6 +78,8 @@ public class CreateRepo {
                     YumPackage yumPackage = new YumPackageParser().parse(
                             new FileInputStream(file), location, file.lastModified()
                     );
+                    Formatter fmt = new Formatter();
+                     LoggerFactory.getLogger(this.getClass()).debug(fmt.format("Parsed RPM package: %10s  %10s  %10s", yumPackage.getName(), yumPackage.getVersion(), yumPackage.getSummary()).toString() );
                     yumStore.put(yumPackage);
                 } catch (FileNotFoundException e) {
 //                    LOG.warn("Could not parse yum metadata for {}", location, e);
@@ -99,12 +104,12 @@ public class CreateRepo {
         syncYumPackages(yumStore);
         CreateYumRepository createRepo = null;
 
-        createRepo = new CreateYumRepository(repoTmpRepodataDir, null, null);
+        createRepo = new CreateYumRepository(repoTmpRepodataDir, (int ) (Calendar.getInstance().getTime().getTime() / 1000), null);
         for (YumPackage yumPackage : yumStore.get()) {
 
             createRepo.write(yumPackage);
         }
-
+        createRepo.close();
         DirSupport.deleteIfExists(repoRepodataDir);
         DirSupport.moveIfExists(repoTmpRepodataDir, repoRepodataDir);
 
