@@ -46,7 +46,7 @@
         <dependency>
             <groupId>ua.pp.msk.yum</groupId>
             <artifactId>CreaterepoUtils</artifactId>
-            <version>0.5</version>
+            <version>0.6</version>
             <type>jar</type>
         </dependency>
         <dependency>
